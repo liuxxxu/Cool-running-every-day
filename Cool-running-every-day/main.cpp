@@ -13,6 +13,7 @@
 		b.渲染游戏背景
 			相关知识：坐标为图片左上角点的位置
 			遇到问题：png格式图片透明部分显示为黑色		解决：添加使用tools
+4.实现玩家奔跑
 */
 #include<iostream>
 #include<stdio.h>
@@ -25,17 +26,25 @@ using namespace std;
 #define WIN_WIDTH 1012
 #define WIN_HEIGHT 396
 
-//创建背景相关全局变量
-IMAGE imgBgs[3];//背景图片
-int bgX[3];//背景图片x坐标
-int bgSpeed[3] = { 1,2,4 };//背景图片滚动速度
+//背景图片
+IMAGE imgBgs[3];
+//背景图片x坐标
+int bgX[3];
+//背景图片滚动速度
+int bgSpeed[3] = { 1,2,4 };
+
+//角色图片
+IMAGE imgHeros[12];
+int heroX;//角色的X坐标
+int heroY;//角色的Y坐标
+int heroIndex;//角色动画帧序号
 
 //游戏的初始化
 void init()
 {
 	//创建游戏窗口
 	initgraph(WIN_WIDTH, WIN_HEIGHT);
-	//加载背景资源
+	//加载背景素材
 	char name[64];
 	for (int i = 0; i < 3; i++)
 	{	
@@ -46,10 +55,24 @@ void init()
 		
 		bgX[i] = 0;
 	}
+
+	//加载角色奔跑素材
+	for (int i = 0; i < 12; i++)
+	{
+		//"res/hero1.png"	……	"res/bg12.png"
+		sprintf_s(name, "res/hero%d.png", i + 1);
+		loadimage(&imgHeros[i], name);
+	}
+
+	//设置玩家的初始位置
+	heroX = WIN_WIDTH * 0.5 - imgHeros[0].getwidth() * 0.5;
+	heroY = 345 - imgHeros[0].getheight();
+	heroIndex = 0;
+
 }
 
-//背景滚动
-void fly()
+//素材的循环滚动
+void circulate()
 {
 	for (int i = 0; i < 3; i++)
 	{
@@ -59,6 +82,8 @@ void fly()
 			bgX[i] = 0;
 		}
 	}
+
+	heroIndex = (heroIndex + 1) % 12;
 }
 
 //渲染游戏背景
@@ -77,8 +102,9 @@ int main()
 	{
 		BeginBatchDraw();
 		updateBg();
+		putimagePNG2(heroX,heroY, &imgHeros[heroIndex]);
 		EndBatchDraw();
-		fly();
+		circulate();
 		Sleep(30);
 	}
 	
