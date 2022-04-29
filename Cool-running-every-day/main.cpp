@@ -18,6 +18,7 @@
 #include<iostream>
 #include<stdio.h>
 #include<graphics.h>
+#include<conio.h>
 #include"tools.h"
 using namespace std;
 
@@ -38,6 +39,9 @@ IMAGE imgHeros[12];
 int heroX;//角色的X坐标
 int heroY;//角色的Y坐标
 int heroIndex;//角色动画帧序号
+bool heroJump;//角色跳跃状态
+int jumpHeightMax;
+int jumpHeightOff;
 
 //游戏的初始化
 void init()
@@ -68,12 +72,15 @@ void init()
 	heroX = WIN_WIDTH * 0.5 - imgHeros[0].getwidth() * 0.5;
 	heroY = 345 - imgHeros[0].getheight();
 	heroIndex = 0;
-
+	heroJump = 0;
+	jumpHeightMax = 345 - imgHeros[0].getheight() - 120;
+	jumpHeightOff = -13;
 }
 
 //素材的循环滚动
 void circulate()
 {
+	//背景循环
 	for (int i = 0; i < 3; i++)
 	{
 		bgX[i] -= bgSpeed[i];
@@ -83,7 +90,25 @@ void circulate()
 		}
 	}
 
-	heroIndex = (heroIndex + 1) % 12;
+	//角色跳跃
+	if (heroJump)
+	{
+		if (heroY < jumpHeightMax)
+		{
+			jumpHeightOff = 13;
+		}
+		heroY += jumpHeightOff;
+		if (heroY >  345 - imgHeros[0].getheight())
+		{
+			heroJump = 0;
+			jumpHeightOff = -13;
+		}
+	}
+	else
+	{
+		//角色循环
+		heroIndex = (heroIndex + 1) % 12;
+	}
 }
 
 //渲染游戏背景
@@ -94,12 +119,32 @@ void updateBg()
 	putimagePNG2(bgX[2],330, & imgBgs[2]);
 }
 
+//角色跳跃
+void jump()
+{
+	heroJump = 1;
+}
+
+//处理用户按键输入
+void keyEvent()
+{
+	char ch;
+	if (_kbhit())	//如果有按键输入，_kbhit返回值为true
+	{
+		ch = _getch();
+		if (ch==' ')
+		{
+			jump(); 
+		}
+	}
+}
 
 int main()
 {
 	init();
 	while (1)
 	{
+		keyEvent();
 		BeginBatchDraw();
 		updateBg();
 		putimagePNG2(heroX,heroY, &imgHeros[heroIndex]);
