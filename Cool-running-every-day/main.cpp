@@ -44,8 +44,14 @@ int jumpHeightMax;
 int jumpHeightOff;
 
 //优化帧等待
-int timer;
+int timer = 0;
 bool update;//表示是否马上需要刷新画面
+
+//障碍物图片
+IMAGE imgTors;//乌龟
+int torX;//乌龟的X坐标
+int torY;//乌龟的Y坐标
+bool torExist;//当前窗口乌龟存在状态
 
 //游戏的初始化
 void init()
@@ -59,7 +65,7 @@ void init()
 		// "res/bg001.png"		"res/bg002.png"		"res/bg003.png"
 		sprintf_s(name,"res/bg%03d.png", i + 1);
 		//修改字符集为使用多字节字符集
-		loadimage(&imgBgs[i],name);                                    //？
+		loadimage(&imgBgs[i],name);
 		
 		bgX[i] = 0;
 	}
@@ -81,6 +87,12 @@ void init()
 	jumpHeightOff = -13;
 
 	timer = 0;
+	update = 1;
+
+	//加载乌龟素材
+	loadimage(&imgTors, "res/t1.png"); 
+	torExist = 0;
+	torY = 350 - imgTors.getheight();
 }
 
 //素材的循环滚动
@@ -112,9 +124,31 @@ void circulate()
 	}
 	else
 	{
-		//角色循环
+		//奔跑状态角色循环
 		heroIndex = (heroIndex + 1) % 12;
 	}
+
+	//创建乌龟 
+	static int frameCount = 0;
+	frameCount++;
+	if (frameCount > 100)
+	{
+		frameCount = 0;
+		if (!torExist)
+		{
+			torExist = 1;
+			torX = WIN_WIDTH;
+		}
+	}
+	if (torExist)
+	{
+		torX -= 10;
+		if (torX < -imgTors.getwidth())
+		{
+			torExist = 0;
+		}
+	}
+	
 }
 
 //渲染游戏背景
@@ -146,6 +180,15 @@ void keyEvent()
 	}
 }
 
+//渲染乌龟
+void updateEnemy()
+{
+	if (torExist)
+	{
+		putimagePNG2(torX,torY,WIN_WIDTH,&imgTors);
+	}
+}
+
 int main()
 {
 	init();
@@ -164,6 +207,7 @@ int main()
 			BeginBatchDraw();
 			updateBg();
 			putimagePNG2(heroX, heroY, &imgHeros[heroIndex]);
+			updateEnemy();
 			EndBatchDraw();
 			circulate();
 		}
