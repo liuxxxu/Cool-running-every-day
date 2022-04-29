@@ -43,6 +43,10 @@ bool heroJump;//角色跳跃状态
 int jumpHeightMax;
 int jumpHeightOff;
 
+//优化帧等待
+int timer;
+bool update;//表示是否马上需要刷新画面
+
 //游戏的初始化
 void init()
 {
@@ -75,6 +79,8 @@ void init()
 	heroJump = 0;
 	jumpHeightMax = 345 - imgHeros[0].getheight() - 120;
 	jumpHeightOff = -13;
+
+	timer = 0;
 }
 
 //素材的循环滚动
@@ -84,7 +90,7 @@ void circulate()
 	for (int i = 0; i < 3; i++)
 	{
 		bgX[i] -= bgSpeed[i];
-		if (bgX[i]<-WIN_WIDTH)
+		if (bgX[i] < -WIN_WIDTH)
 		{
 			bgX[i] = 0;
 		}
@@ -123,6 +129,7 @@ void updateBg()
 void jump()
 {
 	heroJump = 1;
+	update = 1;
 }
 
 //处理用户按键输入
@@ -145,12 +152,22 @@ int main()
 	while (1)
 	{
 		keyEvent();
-		BeginBatchDraw();
-		updateBg();
-		putimagePNG2(heroX,heroY, &imgHeros[heroIndex]);
-		EndBatchDraw();
-		circulate();
-		Sleep(30);
+		timer += getDelay();
+		if (timer>30)
+		{
+			timer = 0;
+			update = 1;
+		}
+		if (update)
+		{
+			update = 0;
+			BeginBatchDraw();
+			updateBg();
+			putimagePNG2(heroX, heroY, &imgHeros[heroIndex]);
+			EndBatchDraw();
+			circulate();
+		}
+		//Sleep(30);
 	}
 	
 	system("pause");
