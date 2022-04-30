@@ -19,6 +19,7 @@
 #include<stdio.h>
 #include<graphics.h>
 #include<conio.h>
+#include<vector>
 #include"tools.h"
 using namespace std;
 
@@ -32,7 +33,7 @@ IMAGE imgBgs[3];
 //背景图片x坐标
 int bgX[3];
 //背景图片滚动速度
-int bgSpeed[3] = { 1,2,4 };
+int bgSpeed[3] = { 1,3,6 };
 
 //角色图片
 IMAGE imgHeros[12];
@@ -47,11 +48,34 @@ int jumpHeightOff;
 int timer = 0;
 bool update;//表示是否马上需要刷新画面
 
+
 //障碍物图片
-IMAGE imgTors;//乌龟
+IMAGE imgTors[7];//乌龟
 int torX;//乌龟的X坐标
 int torY;//乌龟的Y坐标
 bool torExist;//当前窗口乌龟存在状态
+int torIndex;//乌龟动画帧序号
+
+
+typedef enum
+{
+	TOR,//乌龟 0
+	LION,//狮子 1
+	OBSTACLE_TYPE_COUNT//2
+}obstacle_type;
+
+vector<vector<int>>obstacleImgs;	//相当于IMAGE obstacleImgs[3][12];	障碍物图片
+
+typedef struct obstacle
+{
+	obstacle_type type;//障碍物类型
+	int imgIndex;//当前图片序号
+	int X, Y;//障碍物坐标
+	int speed;//障碍物速度
+	int power;//障碍物伤害
+	bool exist;//障碍物存在状态
+
+}obstacle_t;
 
 //游戏的初始化
 void init()
@@ -73,26 +97,31 @@ void init()
 	//加载角色奔跑素材
 	for (int i = 0; i < 12; i++)
 	{
-		//"res/hero1.png"	……	"res/bg12.png"
+		//"res/hero1.png"	……	"res/hero12.png"
 		sprintf_s(name, "res/hero%d.png", i + 1);
 		loadimage(&imgHeros[i], name);
 	}
 
 	//设置玩家的初始位置
-	heroX = WIN_WIDTH * 0.5 - imgHeros[0].getwidth() * 0.5;
+	heroX = WIN_WIDTH * 0.3 - imgHeros[0].getwidth() * 0.5;
 	heroY = 345 - imgHeros[0].getheight();
 	heroIndex = 0;
 	heroJump = 0;
 	jumpHeightMax = 345 - imgHeros[0].getheight() - 120;
-	jumpHeightOff = -13;
+	jumpHeightOff = -12;
 
 	timer = 0;
 	update = 1;
 
 	//加载乌龟素材
-	loadimage(&imgTors, "res/t1.png"); 
+	for (int i = 0; i < 7; i++)
+	{
+		//"res/t1.png"	……	"res/t7.png"
+		sprintf_s(name, "res/t%d.png", i + 1);
+		loadimage(&imgTors[i], name);
+	}
 	torExist = 0;
-	torY = 350 - imgTors.getheight();
+	torY = 350 - imgTors->getheight();
 }
 
 //素材的循环滚动
@@ -113,13 +142,13 @@ void circulate()
 	{
 		if (heroY < jumpHeightMax)
 		{
-			jumpHeightOff = 13;
+			jumpHeightOff = 12;
 		}
 		heroY += jumpHeightOff;
 		if (heroY >  345 - imgHeros[0].getheight())
 		{
 			heroJump = 0;
-			jumpHeightOff = -13;
+			jumpHeightOff = -12;
 		}
 	}
 	else
@@ -129,21 +158,24 @@ void circulate()
 	}
 
 	//创建乌龟 
+	torIndex = (torIndex + 1) % 7;
 	static int frameCount = 0;
+	static int torFre = 50;
 	frameCount++;
-	if (frameCount > 100)
+	if (frameCount > torFre)
 	{
 		frameCount = 0;
 		if (!torExist)
 		{
 			torExist = 1;
 			torX = WIN_WIDTH;
+			torFre = 50 + rand() % 200; 
 		}
 	}
 	if (torExist)
 	{
-		torX -= 10;
-		if (torX < -imgTors.getwidth())
+		torX -= 8;
+		if (torX < -imgTors->getwidth())
 		{
 			torExist = 0;
 		}
@@ -185,7 +217,7 @@ void updateEnemy()
 {
 	if (torExist)
 	{
-		putimagePNG2(torX,torY,WIN_WIDTH,&imgTors);
+		putimagePNG2(torX,torY,WIN_WIDTH,&imgTors[torIndex]);
 	}
 }
 
