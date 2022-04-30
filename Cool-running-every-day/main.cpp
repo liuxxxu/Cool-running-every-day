@@ -28,6 +28,9 @@
 18.实现开始界面
 19.优化必碰障碍
 20.实现分数
+21.实现通关判定
+22.实现通关画面
+23.软件打包发布
 */
 
 #include<stdio.h>
@@ -43,13 +46,14 @@ using namespace std;
 #define WIN_WIDTH 1012
 #define WIN_HEIGHT 396
 #define OBSTACLE_COUNT 10
+#define WIN_SCORE 50
 
 //背景图片
 IMAGE imgBgs[3];
 //背景图片x坐标
 int bgX[3];
 //背景图片滚动速度
-int bgSpeed[3] = { 1,3,6 };
+int bgSpeed[3] = { 3,5,8 };
 
 //角色图片
 IMAGE imgHeros[12];
@@ -105,8 +109,10 @@ typedef struct obstacle
 obstacle_t obstacles[OBSTACLE_COUNT];
 int lastObstacleIndex;
 
-IMAGE imgHeroDown[2];
+IMAGE imgHeroDown[2];//下蹲图片
 bool heroDown;//角色下蹲状态
+
+IMAGE imgSZ[10];//数字图片
 
 //游戏的初始化
 void init()
@@ -121,7 +127,6 @@ void init()
 		sprintf_s(name,"res/bg%03d.png", i + 1);
 		//修改字符集为使用多字节字符集
 		loadimage(&imgBgs[i],name);
-		
 		bgX[i] = 0;
 	}
 
@@ -138,9 +143,10 @@ void init()
 	heroY = 345 - imgHeros[0].getheight();
 	heroIndex = 0;
 	heroJump = 0;
+	heroDown = 0;
 
 	jumpHeightMax = 345 - imgHeros[0].getheight() - 120;
-	jumpHeightOff = -12;
+	jumpHeightOff = -10;
 
 	heroBlood = 100;
 	score = 0;
@@ -193,7 +199,6 @@ void init()
 	//加载角色下蹲素材
 	loadimage(&imgHeroDown[0], "res/d1.png");
 	loadimage(&imgHeroDown[1], "res/d2.png");
-	heroDown = 0;
 
 	//加载柱子素材
 	IMAGE imgH;
@@ -214,6 +219,13 @@ void init()
 
 	//背景音乐
 	mciSendString("play res/bg.mp3 repeat", 0, 0, 0);
+
+	//加载数字资源
+	for (int i = 0; i < 10; i++)
+	{
+		sprintf_s(name, "res/sz/%d.png", i); 
+		loadimage(&imgSZ[i], name);
+	}
 }
 
 void createObstacle()
@@ -240,7 +252,7 @@ void createObstacle()
 			obstacles[lastObstacleIndex].type >= Hook1 &&
 			obstacles[lastObstacleIndex].type <= Hook4 &&
 			obstacles[i].type == LION &&
-			obstacles[lastObstacleIndex].X > (WIN_WIDTH-500))
+			obstacles[lastObstacleIndex].X > (WIN_WIDTH-700))
 	{
 		obstacles[i].type = TOR;
 	}
@@ -258,7 +270,7 @@ void createObstacle()
 	}
 	else if (obstacles[i].type == LION)
 	{
-		obstacles[i].speed = 8;
+		obstacles[i].speed = 6;
 		obstacles[i].power = 15;
 	}
 	else if (obstacles[i].type >= Hook1 && obstacles[i].type <= Hook4)
@@ -278,7 +290,7 @@ void checkHit()
 		if (obstacles[i].exist && !obstacles[i].hited)
 		{
 			int a1x, a1y, a2x, a2y;
-			int off = 30;
+			int off = 33;
 			if (!heroDown)
 			{
 				a1x = heroX + off;
@@ -298,7 +310,7 @@ void checkHit()
 			int b1x = obstacles[i].X + off;
 			int b1y = obstacles[i].Y + off;
 			int b2x = obstacles[i].X + img.getwidth() - off;
-			int b2y = obstacles[i].Y + img.getheight()- 10;
+			int b2y = obstacles[i].Y + img.getheight() - 20;
 
 			if (rectIntersect(a1x,a1y,a2x,a2y,b1x,b1y,b2x,b2y))
 			{
@@ -329,13 +341,13 @@ void circulate()
 	{
 		if (heroY < jumpHeightMax)
 		{
-			jumpHeightOff = 12;
+			jumpHeightOff = 10;
 		}
 		heroY += jumpHeightOff;
 		if (heroY >  345 - imgHeros[0].getheight())
 		{
 			heroJump = 0;
-			jumpHeightOff = -12;
+			jumpHeightOff = -10;
 		}
 	}
 	//角色下蹲
@@ -448,7 +460,7 @@ void keyEvent()
 	}
 }
 
-//渲染乌龟
+//渲染乌龟 —> 渲染障碍物
 void updateEnemy()
 {
 	/*if (torExist)
@@ -485,6 +497,7 @@ void updateBloodBar()
 	drawBloodBar(10, 10, 200, 10, 2, BLUE, DARKGRAY, RED, heroBlood / 100.0);
 }
 
+//检查结束
 void checkOver()
 {
 	if (heroBlood <= 0)
@@ -497,6 +510,22 @@ void checkOver()
 		score = 0;
 		mciSendString("play res/bg.mp3 repeat", 0, 0, 0);
 	}
+}
+
+//更新分数
+void updateScore()
+{
+	//50 -> "50" 数字变字符串方便处理
+	char str[8];
+	sprintf_s(str, "%d", score);
+	int x = 20, y = 25;
+	for (int i = 0; str[i]; i++)
+	{
+		int sz = str[i] - '0';
+		putimagePNG(x, y, &imgSZ[sz]);
+		x += imgSZ[sz].getwidth() + 5;
+	}
+
 }
 
 //检查分数
@@ -513,6 +542,25 @@ void checkScore()
 			obstacles[i].passed = 1;
 			cout << "score:" << score << endl;
 		}
+	}
+}
+
+//通关判定
+void checkWin()
+{
+	if (score >= WIN_SCORE)
+	{
+		FlushBatchDraw();
+		mciSendString("play res/win.mp3", 0, 0, 0);
+		Sleep(1000);
+		loadimage(0, "res/win.png");
+		FlushBatchDraw();
+		mciSendString("stop res/win.mp3", 0, 0, 0);
+		system("pause");
+		heroBlood = 100;
+		score = 0;
+		mciSendString("stop res/bg.mp3 repeat", 0, 0, 0);
+
 	}
 }
 
@@ -540,9 +588,12 @@ int main()
 			updateHero();
 			updateEnemy();
 			updateBloodBar();
+			updateScore();
+			checkWin();
 			EndBatchDraw();
 			checkOver();
 			checkScore();
+			
 			circulate();
 		}
 		//Sleep(30);
