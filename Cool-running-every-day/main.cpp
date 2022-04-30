@@ -158,6 +158,38 @@ void init()
 	}
 }
 
+void createObstacle()
+{
+	int i;
+	for (i = 0; i < OBSTACLE_COUNT; i++)
+	{
+		if (obstacles[i].exist==0)
+		{
+			break;
+		}
+	}
+	if (i>= OBSTACLE_COUNT)
+	{
+		return;
+	}
+
+	obstacles[i].exist = 1;
+	obstacles[i].imgIndex = 0;
+	obstacles[i].type = (obstacle_type)(rand() % OBSTACLE_TYPE_COUNT);
+	obstacles[i].X = WIN_WIDTH;
+	obstacles[i].Y = 350 - obstacleImgs[obstacles[i].type][0].getheight();
+	if (obstacles[i].type == TOR)
+	{
+		obstacles[i].speed = 2;
+		obstacles[i].power = 5;
+	}
+	else if (obstacles[i].type == LION)
+	{
+		obstacles[i].speed = 8;
+		obstacles[i].power = 10;
+	}
+}
+
 //素材的循环滚动
 void circulate()
 {
@@ -191,28 +223,46 @@ void circulate()
 		heroIndex = (heroIndex + 1) % 12;
 	}
 
-	//创建乌龟 
-	torIndex = (torIndex + 1) % 7;
+	//创建障碍物 
+	//torIndex = (torIndex + 1) % 7;
 	static int frameCount = 0;
-	static int torFre = 50;
+	static int enemyFre = 50;
 	frameCount++;
-	if (frameCount > torFre)
+	if (frameCount > enemyFre)
 	{
 		frameCount = 0;
-		if (!torExist)
+		enemyFre = 50 + rand() % 100;
+		createObstacle();
+		/*if (!torExist)
 		{
 			torExist = 1;
 			torX = WIN_WIDTH;
 			torFre = 50 + rand() % 200; 
-		}
+		}*/
 	}
-	if (torExist)
+	/*if (torExist)
 	{
 		torX -= 8;
 		if (torX < -imgTors->getwidth())
 		{
 			torExist = 0;
 		}
+	}*/
+
+	//更新障碍物坐标
+	for (int i = 0; i < OBSTACLE_COUNT; i++)
+	{
+		if (obstacles[i].exist)
+		{
+			obstacles[i].X -= obstacles[i].speed + 6;
+			if (obstacles[i].X < -obstacleImgs[obstacles[i].type][0].getwidth())
+			{
+				obstacles[i].exist = 0;
+			}
+			int len = obstacleImgs[obstacles[i].type].size();
+			obstacles[i].imgIndex = (obstacles[i].imgIndex + 1) % len;
+		}
+
 	}
 	
 }
@@ -249,9 +299,17 @@ void keyEvent()
 //渲染乌龟
 void updateEnemy()
 {
-	if (torExist)
+	/*if (torExist)
 	{
 		putimagePNG2(torX,torY,WIN_WIDTH,&imgTors[torIndex]);
+	}*/
+	for (int i = 0; i < OBSTACLE_COUNT; i++)
+	{
+		if (obstacles[i].exist)
+		{
+			putimagePNG2(obstacles[i].X, obstacles[i].Y, WIN_WIDTH,
+				&obstacleImgs[obstacles[i].type][obstacles[i].imgIndex]);
+		}
 	}
 }
 
