@@ -15,7 +15,7 @@
 			遇到问题：png格式图片透明部分显示为黑色		解决：添加使用tools
 4.实现玩家奔跑
 */
-#include<iostream>
+
 #include<stdio.h>
 #include<graphics.h>
 #include<conio.h>
@@ -24,9 +24,9 @@
 using namespace std;
 
 //定义宏变量
-#define _CRT_SECURE_NO_DEPRECATE
 #define WIN_WIDTH 1012
 #define WIN_HEIGHT 396
+#define OBSTACLE_COUNT 10
 
 //背景图片
 IMAGE imgBgs[3];
@@ -48,14 +48,14 @@ int jumpHeightOff;
 int timer = 0;
 bool update;//表示是否马上需要刷新画面
 
-
+/*
 //障碍物图片
 IMAGE imgTors[7];//乌龟
 int torX;//乌龟的X坐标
 int torY;//乌龟的Y坐标
 bool torExist;//当前窗口乌龟存在状态
 int torIndex;//乌龟动画帧序号
-
+*/
 
 typedef enum
 {
@@ -64,7 +64,7 @@ typedef enum
 	OBSTACLE_TYPE_COUNT//2
 }obstacle_type;
 
-vector<vector<int>>obstacleImgs;	//相当于IMAGE obstacleImgs[3][12];	障碍物图片
+vector<vector<IMAGE>>obstacleImgs;	//相当于IMAGE obstacleImgs[3][12];	障碍物图片
 
 typedef struct obstacle
 {
@@ -76,6 +76,8 @@ typedef struct obstacle
 	bool exist;//障碍物存在状态
 
 }obstacle_t;
+
+obstacle_t obstacles[OBSTACLE_COUNT];
 
 //游戏的初始化
 void init()
@@ -113,6 +115,7 @@ void init()
 	timer = 0;
 	update = 1;
 
+	/*
 	//加载乌龟素材
 	for (int i = 0; i < 7; i++)
 	{
@@ -122,6 +125,37 @@ void init()
 	}
 	torExist = 0;
 	torY = 350 - imgTors->getheight();
+	*/
+
+	//加载乌龟素材
+	IMAGE imgTor;
+	vector<IMAGE> imgTorArray;
+	for (int i = 0; i < 7; i++)
+	{
+		//"res/t1.png"	……	"res/t7.png"
+		sprintf_s(name, "res/t%d.png", i + 1);
+		loadimage(&imgTor, name);
+		imgTorArray.push_back(imgTor);
+	}
+	obstacleImgs.push_back(imgTorArray);
+
+	//加载狮子素材
+	IMAGE imgLion;
+	vector<IMAGE> imgLionArray;
+	for (int i = 0; i < 6; i++)
+	{
+		//"res/p1.png"	……	"res/p6.png"
+		sprintf_s(name, "res/p%d.png", i + 1);
+		loadimage(&imgLion, name);
+		imgLionArray.push_back(imgLion);
+	}
+	obstacleImgs.push_back(imgLionArray);
+
+	//初始化障碍物池
+	for (int i = 0; i < OBSTACLE_COUNT; i++)
+	{
+		obstacles[i].exist = 0;
+	}
 }
 
 //素材的循环滚动
