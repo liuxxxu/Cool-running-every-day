@@ -54,6 +54,8 @@ bool heroJump;//角色跳跃状态
 int jumpHeightMax;
 int jumpHeightOff;
 
+int heroBlood;
+
 //优化帧等待
 int timer;
 bool update;//表示是否马上需要刷新画面
@@ -88,7 +90,7 @@ typedef struct obstacle
 	int speed;//障碍物速度
 	int power;//障碍物伤害
 	bool exist;//障碍物存在状态
-
+	bool hited;//是否已经碰撞
 }obstacle_t;
 
 obstacle_t obstacles[OBSTACLE_COUNT];
@@ -100,7 +102,7 @@ bool heroDown;//角色下蹲状态
 void init()
 {
 	//创建游戏窗口
-	initgraph(WIN_WIDTH, WIN_HEIGHT);
+	initgraph(WIN_WIDTH, WIN_HEIGHT, EW_SHOWCONSOLE);
 	//加载背景素材
 	char name[64];
 	for (int i = 0; i < 3; i++)
@@ -129,6 +131,8 @@ void init()
 
 	jumpHeightMax = 345 - imgHeros[0].getheight() - 120;
 	jumpHeightOff = -12;
+
+	heroBlood = 100;
 
 	timer = 0;
 	update = 1;
@@ -192,6 +196,8 @@ void init()
 		obstacleImgs.push_back(imgHArray); 
 	}
 	
+	//预加载音频
+	preLoadSound("res/hit.mp3");
 }
 
 void createObstacle()
@@ -210,6 +216,7 @@ void createObstacle()
 	}
 
 	obstacles[i].exist = 1;
+	obstacles[i].hited = 0;
 	obstacles[i].imgIndex = 0;
 	//obstacles[i].type = (obstacle_type)(rand() % OBSTACLE_TYPE_COUNT);
 	obstacles[i].type = (obstacle_type)(rand() % 3);
@@ -242,7 +249,7 @@ void checkHit()
 {
 	for (int i = 0; i < OBSTACLE_COUNT; i++)
 	{
-		if (obstacles[i].exist)
+		if (obstacles[i].exist && !obstacles[i].hited)
 		{
 			int a1x, a1y, a2x, a2y;
 			int off = 30;
@@ -265,7 +272,15 @@ void checkHit()
 			int b1x = obstacles[i].X + off;
 			int b1y = obstacles[i].Y + off;
 			int b2x = obstacles[i].X + img.getwidth() - off;
-			int b2y = obstacles[i].Y + img.getheight()- off;
+			int b2y = obstacles[i].Y + img.getheight()- 10;
+
+			if (rectIntersect(a1x,a1y,a2x,a2y,b1x,b1y,b2x,b2y))
+			{
+				heroBlood -= obstacles[i].power;
+				cout << "剩余血量:" << heroBlood << endl;
+				playSound("res/hit.mp3");
+				obstacles[i].hited = 1;
+			}
 		}
 	}
 }
@@ -301,7 +316,7 @@ void circulate()
 	else if (heroDown)
 	{
 		static int count = 0;
-		int delay[2] = {5,20};
+		int delay[2] = {1,18};
 		count++;
 		if (count > delay[heroIndex])
 		{
