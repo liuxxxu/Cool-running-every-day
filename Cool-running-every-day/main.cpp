@@ -118,7 +118,7 @@ IMAGE imgSZ[10];//数字图片
 void init()
 {
 	//创建游戏窗口
-	initgraph(WIN_WIDTH, WIN_HEIGHT, EW_SHOWCONSOLE);
+	initgraph(WIN_WIDTH, WIN_HEIGHT);
 	//加载背景素材
 	char name[64];
 	for (int i = 0; i < 3; i++)
@@ -290,12 +290,13 @@ void checkHit()
 		if (obstacles[i].exist && !obstacles[i].hited)
 		{
 			int a1x, a1y, a2x, a2y;
-			int off = 33;
+			int off = 30;
 			if (!heroDown)
 			{
 				a1x = heroX + off;
 				a1y = heroY + off;
 				a2x = heroX + imgHeros[heroIndex].getwidth() - off;
+				a2y = heroY + imgHeros[heroIndex].getheight();
 				a2y = heroY + imgHeros[heroIndex].getheight();
 			}
 			else
@@ -310,7 +311,7 @@ void checkHit()
 			int b1x = obstacles[i].X + off;
 			int b1y = obstacles[i].Y + off;
 			int b2x = obstacles[i].X + img.getwidth() - off;
-			int b2y = obstacles[i].Y + img.getheight() - 20;
+			int b2y = obstacles[i].Y + img.getheight() - 10;
 
 			if (rectIntersect(a1x,a1y,a2x,a2y,b1x,b1y,b2x,b2y))
 			{
