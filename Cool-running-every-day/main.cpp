@@ -11,8 +11,6 @@
 	3)实现游戏背景
 		a.加载背景资源
 		b.渲染游戏背景
-			相关知识：坐标为图片左上角点的位置
-			遇到问题：png格式图片透明部分显示为黑色		解决：添加使用tools
 4.实现玩家奔跑
 5.实现玩家跳跃
 6.实现随机出现乌龟
@@ -21,6 +19,15 @@
 9.封装多个障碍物的显示
 10.实现玩家下蹲
 11.实现柱子障碍物
+12.优化障碍物的出现频率
+13.实现碰撞检测
+14.实现音效和背景音乐
+15.实现血条
+16.实现结束判定
+17.实现重新开始和界面
+18.实现开始界面
+19.优化必碰障碍
+20.实现分数
 */
 
 #include<stdio.h>
@@ -51,13 +58,14 @@ int heroY;//角色的Y坐标
 int heroIndex;//角色动画帧序号
 bool heroJump;//角色跳跃状态
 
-int jumpHeightMax;
-int jumpHeightOff;
+int jumpHeightMax;//跳跃最大高度
+int jumpHeightOff;//跳跃偏移量
 
-int heroBlood;
+int heroBlood;//血量
+int score;//分数
 
 //优化帧等待
-int timer;
+int timer;//时间统计
 bool update;//表示是否马上需要刷新画面
 
 /*
@@ -91,9 +99,11 @@ typedef struct obstacle
 	int power;//障碍物伤害
 	bool exist;//障碍物存在状态
 	bool hited;//是否已经碰撞
+	bool passed;//是否已被通过
 }obstacle_t;
 
 obstacle_t obstacles[OBSTACLE_COUNT];
+int lastObstacleIndex;
 
 IMAGE imgHeroDown[2];
 bool heroDown;//角色下蹲状态
@@ -133,6 +143,7 @@ void init()
 	jumpHeightOff = -12;
 
 	heroBlood = 100;
+	score = 0;
 
 	timer = 0;
 	update = 1;
@@ -195,9 +206,14 @@ void init()
 		imgHArray.push_back(imgH);
 		obstacleImgs.push_back(imgHArray); 
 	}
+
+	lastObstacleIndex = -1;
 	
 	//预加载音频
 	preLoadSound("res/hit.mp3");
+
+	//背景音乐
+	mciSendString("play res/bg.mp3 repeat", 0, 0, 0);
 }
 
 void createObstacle()
@@ -220,6 +236,15 @@ void createObstacle()
 	obstacles[i].imgIndex = 0;
 	//obstacles[i].type = (obstacle_type)(rand() % OBSTACLE_TYPE_COUNT);
 	obstacles[i].type = (obstacle_type)(rand() % 3);
+	if (lastObstacleIndex >= 0 &&
+			obstacles[lastObstacleIndex].type >= Hook1 &&
+			obstacles[lastObstacleIndex].type <= Hook4 &&
+			obstacles[i].type == LION &&
+			obstacles[lastObstacleIndex].X > (WIN_WIDTH-500))
+	{
+		obstacles[i].type = TOR;
+	}
+	lastObstacleIndex = i;
 	if (obstacles[i].type == Hook1)
 	{
 		obstacles[i].type += rand() % 4;
@@ -228,20 +253,21 @@ void createObstacle()
 	obstacles[i].Y = 350 - obstacleImgs[obstacles[i].type][0].getheight();
 	if (obstacles[i].type == TOR)
 	{
-		obstacles[i].speed = 2;
-		obstacles[i].power = 5;
+		obstacles[i].speed = 0;
+		obstacles[i].power = 10;
 	}
 	else if (obstacles[i].type == LION)
 	{
 		obstacles[i].speed = 8;
-		obstacles[i].power = 10;
+		obstacles[i].power = 15;
 	}
 	else if (obstacles[i].type >= Hook1 && obstacles[i].type <= Hook4)
 	{
 		obstacles[i].speed = 0;
-		obstacles[i].power = 3;
+		obstacles[i].power = 5;
 		obstacles[i].Y = 0;
 	}
+	obstacles[i].passed = 0;
 }
 
 //碰撞检测
@@ -316,7 +342,7 @@ void circulate()
 	else if (heroDown)
 	{
 		static int count = 0;
-		int delay[2] = {1,18};
+		int delay[2] = {2,20};
 		count++;
 		if (count > delay[heroIndex])
 		{
@@ -439,6 +465,7 @@ void updateEnemy()
 	}
 }
 
+//渲染角色
 void updateHero()
 {
 	if (!heroDown)
@@ -452,9 +479,48 @@ void updateHero()
 	}
 }
 
+//渲染血条
+void updateBloodBar()
+{
+	drawBloodBar(10, 10, 200, 10, 2, BLUE, DARKGRAY, RED, heroBlood / 100.0);
+}
+
+void checkOver()
+{
+	if (heroBlood <= 0)
+	{
+		loadimage(0, "res/over.png");
+		FlushBatchDraw();
+		mciSendString("stop res/bg.mp3", 0, 0, 0);
+		system("pause");
+		heroBlood = 100;
+		score = 0;
+		mciSendString("play res/bg.mp3 repeat", 0, 0, 0);
+	}
+}
+
+//检查分数
+void checkScore()
+{
+	for (int i = 0; i < OBSTACLE_COUNT; i++)
+	{
+		if (obstacles[i].exist &&
+			obstacles[i].passed == 0 &&
+			obstacles[i].hited == 0 &&
+			obstacles[i].X + obstacleImgs[obstacles[i].type][0].getwidth() < heroX)
+		{
+			score++;
+			obstacles[i].passed = 1;
+			cout << "score:" << score << endl;
+		}
+	}
+}
+
 int main()
 {
 	init();
+	loadimage(0, "res/start.png");
+	system("pause");
 	srand((unsigned int)(time(NULL)));
 	while (1)
 	{
@@ -473,7 +539,10 @@ int main()
 			//putimagePNG2(heroX, heroY, &imgHeros[heroIndex]);
 			updateHero();
 			updateEnemy();
+			updateBloodBar();
 			EndBatchDraw();
+			checkOver();
+			checkScore();
 			circulate();
 		}
 		//Sleep(30);
