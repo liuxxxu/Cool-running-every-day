@@ -14,11 +14,20 @@
 			相关知识：坐标为图片左上角点的位置
 			遇到问题：png格式图片透明部分显示为黑色		解决：添加使用tools
 4.实现玩家奔跑
+5.实现玩家跳跃
+6.实现随机出现乌龟
+7.创建障碍物结构体数据类型
+8.使用障碍物结构体重新初始化
+9.封装多个障碍物的显示
+10.实现玩家下蹲
+11.实现柱子障碍物
 */
 
 #include<stdio.h>
+#include<iostream>
 #include<graphics.h>
 #include<conio.h>
+#include<ctime>
 #include<vector>
 #include"tools.h"
 using namespace std;
@@ -41,11 +50,12 @@ int heroX;//角色的X坐标
 int heroY;//角色的Y坐标
 int heroIndex;//角色动画帧序号
 bool heroJump;//角色跳跃状态
+
 int jumpHeightMax;
 int jumpHeightOff;
 
 //优化帧等待
-int timer = 0;
+int timer;
 bool update;//表示是否马上需要刷新画面
 
 /*
@@ -61,14 +71,18 @@ typedef enum
 {
 	TOR,//乌龟 0
 	LION,//狮子 1
-	OBSTACLE_TYPE_COUNT//2
+	Hook1,
+	Hook2,
+	Hook3,
+	Hook4,
+	OBSTACLE_TYPE_COUNT
 }obstacle_type;
 
-vector<vector<IMAGE>>obstacleImgs;	//相当于IMAGE obstacleImgs[3][12];	障碍物图片
+vector<vector<IMAGE>>obstacleImgs;	//所有障碍物图片
 
 typedef struct obstacle
 {
-	obstacle_type type;//障碍物类型
+	int type;//障碍物类型
 	int imgIndex;//当前图片序号
 	int X, Y;//障碍物坐标
 	int speed;//障碍物速度
@@ -78,6 +92,9 @@ typedef struct obstacle
 }obstacle_t;
 
 obstacle_t obstacles[OBSTACLE_COUNT];
+
+IMAGE imgHeroDown[2];
+bool heroDown;//角色下蹲状态
 
 //游戏的初始化
 void init()
@@ -109,6 +126,7 @@ void init()
 	heroY = 345 - imgHeros[0].getheight();
 	heroIndex = 0;
 	heroJump = 0;
+
 	jumpHeightMax = 345 - imgHeros[0].getheight() - 120;
 	jumpHeightOff = -12;
 
@@ -156,6 +174,24 @@ void init()
 	{
 		obstacles[i].exist = 0;
 	}
+
+	//加载角色下蹲素材
+	loadimage(&imgHeroDown[0], "res/d1.png");
+	loadimage(&imgHeroDown[1], "res/d2.png");
+	heroDown = 0;
+
+	//加载柱子素材
+	IMAGE imgH;
+	for (int i = 0; i < 4; i++)
+	{
+		//"res/h1.png"	……	"res/h4.png"
+		vector<IMAGE> imgHArray;
+		sprintf_s(name, "res/h%d.png", i + 1);
+		loadimage(&imgH, name,63,260,true);
+		imgHArray.push_back(imgH);
+		obstacleImgs.push_back(imgHArray); 
+	}
+	
 }
 
 void createObstacle()
@@ -175,7 +211,12 @@ void createObstacle()
 
 	obstacles[i].exist = 1;
 	obstacles[i].imgIndex = 0;
-	obstacles[i].type = (obstacle_type)(rand() % OBSTACLE_TYPE_COUNT);
+	//obstacles[i].type = (obstacle_type)(rand() % OBSTACLE_TYPE_COUNT);
+	obstacles[i].type = (obstacle_type)(rand() % 3);
+	if (obstacles[i].type == Hook1)
+	{
+		obstacles[i].type += rand() % 4;
+	}
 	obstacles[i].X = WIN_WIDTH;
 	obstacles[i].Y = 350 - obstacleImgs[obstacles[i].type][0].getheight();
 	if (obstacles[i].type == TOR)
@@ -187,6 +228,45 @@ void createObstacle()
 	{
 		obstacles[i].speed = 8;
 		obstacles[i].power = 10;
+	}
+	else if (obstacles[i].type >= Hook1 && obstacles[i].type <= Hook4)
+	{
+		obstacles[i].speed = 0;
+		obstacles[i].power = 3;
+		obstacles[i].Y = 0;
+	}
+}
+
+//碰撞检测
+void checkHit()
+{
+	for (int i = 0; i < OBSTACLE_COUNT; i++)
+	{
+		if (obstacles[i].exist)
+		{
+			int a1x, a1y, a2x, a2y;
+			int off = 30;
+			if (!heroDown)
+			{
+				a1x = heroX + off;
+				a1y = heroY + off;
+				a2x = heroX + imgHeros[heroIndex].getwidth() - off;
+				a2y = heroY + imgHeros[heroIndex].getheight();
+			}
+			else
+			{
+				a1x = heroX + off;
+				a1y = 345 - imgHeroDown[heroIndex].getheight();
+				a2x = heroX + imgHeroDown[heroIndex].getwidth() - off;
+				a2y = 345;
+			}
+
+			IMAGE img = obstacleImgs[obstacles[i].type][obstacles[i].imgIndex];
+			int b1x = obstacles[i].X + off;
+			int b1y = obstacles[i].Y + off;
+			int b2x = obstacles[i].X + img.getwidth() - off;
+			int b2y = obstacles[i].Y + img.getheight()- off;
+		}
 	}
 }
 
@@ -217,9 +297,26 @@ void circulate()
 			jumpHeightOff = -12;
 		}
 	}
+	//角色下蹲
+	else if (heroDown)
+	{
+		static int count = 0;
+		int delay[2] = {5,20};
+		count++;
+		if (count > delay[heroIndex])
+		{
+			count = 0;
+			heroIndex++;
+			if (heroIndex >= 2)
+			{
+				heroIndex = 0;
+				heroDown = 0;
+			}
+		}
+	}
+	//角色奔跑
 	else
 	{
-		//奔跑状态角色循环
 		heroIndex = (heroIndex + 1) % 12;
 	}
 
@@ -265,6 +362,8 @@ void circulate()
 
 	}
 	
+	//角色和障碍物碰撞检测
+	checkHit();
 }
 
 //渲染游戏背景
@@ -282,6 +381,14 @@ void jump()
 	update = 1;
 }
 
+//角色下蹲
+void down()
+{
+	heroDown = 1;
+	update = 1;
+	heroIndex = 0;
+}
+
 //处理用户按键输入
 void keyEvent()
 {
@@ -289,9 +396,13 @@ void keyEvent()
 	if (_kbhit())	//如果有按键输入，_kbhit返回值为true
 	{
 		ch = _getch();
-		if (ch==' ')
+		if (ch=='j')
 		{
 			jump(); 
+		}
+		else if (ch == 'd')
+		{
+			down();
 		}
 	}
 }
@@ -313,9 +424,23 @@ void updateEnemy()
 	}
 }
 
+void updateHero()
+{
+	if (!heroDown)
+	{
+		putimagePNG2(heroX, heroY, &imgHeros[heroIndex]);
+	}
+	else
+	{
+		int Y = 345 - imgHeroDown[heroIndex].getheight();
+		putimagePNG2(heroX, Y, &imgHeroDown[heroIndex]);
+	}
+}
+
 int main()
 {
 	init();
+	srand((unsigned int)(time(NULL)));
 	while (1)
 	{
 		keyEvent();
@@ -330,7 +455,8 @@ int main()
 			update = 0;
 			BeginBatchDraw();
 			updateBg();
-			putimagePNG2(heroX, heroY, &imgHeros[heroIndex]);
+			//putimagePNG2(heroX, heroY, &imgHeros[heroIndex]);
+			updateHero();
 			updateEnemy();
 			EndBatchDraw();
 			circulate();
